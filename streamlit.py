@@ -93,14 +93,17 @@ if len(files) >= 3:
             st.write(f"**{col}**")
             st.json(report)
 
+        
         # 🔥 Feature Importance via Random Forest
         st.markdown("### 🌲 Feature Importances (RandomForestClassifier)")
-        rf = RandomForestClassifier(n_estimators=100, random_state=0)
-        rf.fit(x_scaled, y[target_cols[0]])  # use first target for simplicity
-        importances = rf.feature_importances_
 
-        # Map back to original feature names
-        feature_names = poly.get_feature_names_out(input_features=x.select_dtypes(include=["int64", "float64"]).columns)
+        numeric_input = x.select_dtypes(include=["int64", "float64"])
+        rf = RandomForestClassifier(n_estimators=100, random_state=0)
+        rf.fit(numeric_input, y[target_cols[0]])  # use first target for simplicity
+
+        importances = rf.feature_importances_
+        feature_names = numeric_input.columns
+
         importance_df = pd.DataFrame({
             "Feature": feature_names,
             "Importance": importances
@@ -108,7 +111,7 @@ if len(files) >= 3:
 
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.barplot(data=importance_df, x="Importance", y="Feature", ax=ax)
-        st.pyplot(fig)
+        st.pyplot(fig)  
 
         # 📊 Correlation Heatmap
         st.markdown("### 🔥 Correlation Heatmap of Numeric Features")
@@ -116,6 +119,38 @@ if len(files) >= 3:
         fig, ax = plt.subplots(figsize=(15, 10))
         sns.heatmap(corr, cmap="coolwarm", center=0, annot=False, ax=ax)
         st.pyplot(fig)
+
+
+        # 📦 Boxplots of numeric features
+        st.markdown("### 📦 Boxplots of Numeric Features")
+
+        # Select numeric features
+        numeric_features = x.select_dtypes(include=['int64', 'float64']).columns.tolist()
+
+        # Choose batch size
+        batch_size = st.slider("Number of features per row:", min_value=3, max_value=10, value=5)
+
+        # Calculate total batches
+        num_batches = len(numeric_features) // batch_size + (len(numeric_features) % batch_size != 0)
+
+        # Loop and show boxplots
+        for batch in range(num_batches):
+            start = batch * batch_size
+            end = start + batch_size
+            features_batch = numeric_features[start:end]
+
+            fig, axs = plt.subplots(1, len(features_batch), figsize=(5 * len(features_batch), 4))
+
+            if len(features_batch) == 1:
+                axs = [axs]
+
+            for i, feature in enumerate(features_batch):
+                sns.boxplot(y=x[feature], ax=axs[i])
+                axs[i].set_title(feature.upper())
+                axs[i].set_xlabel("")
+
+            st.pyplot(fig)
+
 
     else:
         st.warning("No insurance-related columns found in merged data.")
